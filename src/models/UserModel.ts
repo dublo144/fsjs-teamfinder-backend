@@ -5,7 +5,6 @@ export interface IGameUser {
   userName: string;
   password: string;
   role: string;
-  position: object | null;
 }
 
 interface IGameUserDoc extends IGameUser, Document {}

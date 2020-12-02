@@ -1,22 +1,7 @@
 import express from 'express';
-import { getConnectedClient } from '../config/setupDB';
-import GameFacade from '../facades/gameFacade';
+import { GameFacade } from '../facades/gameFacade';
 
 export const router = express.Router();
-let dbInitialized = false;
-
-(async function initDb() {
-  const client = await getConnectedClient();
-  await GameFacade.initDB(client);
-  dbInitialized = true;
-})();
-
-router.use((req, res, next) => {
-  if (dbInitialized) {
-    return next();
-  }
-  return res.json({ info: 'DB not ready, try again' });
-});
 
 //Just to check this router is up and running
 router.get('/', async function (req, res, next) {

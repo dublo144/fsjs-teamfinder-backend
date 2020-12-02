@@ -2,27 +2,11 @@ import express from 'express';
 import { gameArea, players } from '../utils/gameData.js';
 import { getConnectedClient } from '../config/setupDB';
 import { UserFacade } from '../facades/userFacade';
-import GameFacade from '../facades/gameFacade';
+import { GameFacade } from '../facades/gameFacade';
 
 const gju = require('geojson-utils');
 
 export const router = express.Router();
-
-let dbInitialized = false;
-
-(async function initDb() {
-  const client = await getConnectedClient();
-  await UserFacade.initDB(client);
-  await GameFacade.initDB(client);
-  dbInitialized = true;
-})();
-
-router.use((req, res, next) => {
-  if (dbInitialized) {
-    return next();
-  }
-  return res.json({ info: 'DB not ready, try again' });
-});
 
 const polygonForClient = {
   coordinates: gameArea.coordinates[0].map((point) => {

@@ -8,7 +8,7 @@ import { getConnectedClient } from '../src/config/setupDB';
 
 import { positionCreator, getLatitudeInside, getLatitudeOutside } from '../src/utils/geoUtils';
 import { USER_COLLECTION_NAME, POSITION_COLLECTION_NAME } from '../src/config/collectionNames';
-import GameFacade from '../src/facades/gameFacade';
+import { GameFacade } from '../src/facades/gameFacade';
 
 chai.use(spies);
 

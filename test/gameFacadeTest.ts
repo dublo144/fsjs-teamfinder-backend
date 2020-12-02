@@ -1,61 +1,46 @@
-import * as mongo from 'mongodb';
-const MongoClient = mongo.MongoClient;
-import GameFacade from '../src/facades/gameFacade';
+import { GameFacade } from '../src/facades/gameFacade';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import bcrypt from 'bcryptjs';
 import { positionCreator, getLatitudeOutside, getLatitudeInside } from '../src/utils/geoUtils';
-import { USER_COLLECTION_NAME, POSITION_COLLECTION_NAME, POST_COLLECTION_NAME } from '../src/config/collectionNames';
-import { getConnectedClient, closeConnection } from '../src/config/setupDB';
-import { ApiError } from '../src/errors/apiError';
+import mongoose from 'mongoose';
+import UserModel, { IGameUser } from '../src/models/UserModel';
+import PositionModel, { IPosition } from '../src/models/PositionModel';
+
 chai.use(chaiAsPromised);
 
-let userCollection: mongo.Collection | null;
-let positionCollection: mongo.Collection | null;
-let postCollection: mongo.Collection | null;
-
-let client: mongo.MongoClient;
 const DISTANCE_TO_SEARCH = 100;
 
-describe('########## Verify the Game Facade ##########', () => {
+describe.only('########## Verify the Game Facade ##########', () => {
   before(async function () {
-    this.timeout(Number(process.env.MOCHA_TIMEOUT));
-    client = await getConnectedClient();
-    process.env.DB_NAME = 'semester_case_test';
-    await GameFacade.initDB(client);
-
-    const db = client.db(process.env['DB_NAME']);
-
-    userCollection = db.collection(USER_COLLECTION_NAME);
-    positionCollection = db.collection(POSITION_COLLECTION_NAME);
-    postCollection = db.collection(POST_COLLECTION_NAME);
-
-    if (userCollection === null || positionCollection === null) {
-      throw new Error('user and/or location- collection not initialized');
-    }
+    mongoose
+      .connect(
+        `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0-wabpp.mongodb.net/${process.env.MONGO_DB_TEST}?retryWrites=true&w=majority`,
+        { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false }
+      )
+      .then(() => {
+        console.log(`🚀 Connected to ${process.env.MONGO_DB_TEST} 🚀`);
+      })
+      .catch((e) => console.log(e));
   });
 
   beforeEach(async () => {
-    if (userCollection === null || positionCollection === null || postCollection === null) {
-      throw new Error('One of requred collections is null');
-    }
-    await userCollection.deleteMany({});
-    const secretHashed = await bcrypt.hash('secret', 12);
-    const team1 = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
-    const team2 = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
-    const team3 = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
-    await userCollection.insertMany([team1, team2, team3]);
+    await UserModel.deleteMany({});
+    const secretHashed: string = await bcrypt.hash('secret', 12);
 
-    await positionCollection.deleteMany({});
+    const team1: IGameUser = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
+    const team2: IGameUser = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
+    const team3: IGameUser = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
+    await UserModel.insertMany([team1, team2, team3]);
 
-    const positions = [
+    await PositionModel.deleteMany({});
+
+    const positions: Array<IPosition> = [
       positionCreator(12.48, 55.77, team1.userName, team1.name, true),
-      //TODO --> Change latitude below, to a value INSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
       positionCreator(12.48, getLatitudeInside(55.77, DISTANCE_TO_SEARCH), team2.userName, team2.name, true),
-      //TODO --> Change latitude below, to a value OUTSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
       positionCreator(12.48, getLatitudeOutside(55.77, DISTANCE_TO_SEARCH), team3.userName, team3.name, true)
     ];
-    await positionCollection.insertMany(positions);
+    await PositionModel.insertMany(positions);
 
     //Only include this if you plan to do this part
     /*await postCollection.deleteMany({})
@@ -79,7 +64,7 @@ describe('########## Verify the Game Facade ##########', () => {
 
     it('Should not find Team2 (wrong credentials)', async () => {
       await expect(GameFacade.nearbyPlayers('t1', 'xxxxx', 12.48, 55.77, DISTANCE_TO_SEARCH)).to.be.rejectedWith(
-        ApiError
+        'Invalid Credentials'
       );
     });
 

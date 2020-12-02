@@ -11,7 +11,7 @@ const debug = require('debug')('facade-with-db:test');
 const expect = chai.expect;
 chai.use(chaiAsPromised);
 
-describe.only('########## User Facade Test ##########', () => {
+describe('########## User Facade Test ##########', () => {
   before(async function () {
     mongoose
       .connect(
@@ -33,25 +33,21 @@ describe.only('########## User Facade Test ##########', () => {
         name: 'Peter Pan',
         userName: 'pp@b.dk',
         password: secretHashed,
-        role: 'user',
-        position: null
+        role: 'user'
       },
       {
         name: 'Donald Duck',
         userName: 'dd@b.dk',
         password: secretHashed,
-        role: 'user',
-        position: null
+        role: 'user'
       },
       {
         name: 'admin',
         userName: 'admin@a.dk',
         password: secretHashed,
-        role: 'admin',
-        position: null
+        role: 'admin'
       }
     ];
-
     await UserModel.insertMany(testUsers);
   });
 
