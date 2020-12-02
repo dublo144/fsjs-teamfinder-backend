@@ -1,7 +1,7 @@
 import express from 'express';
 import { gameArea, players } from '../utils/gameData.js';
 import { getConnectedClient } from '../config/setupDB';
-import UserFacade from '../facades/userFacadeWithDB';
+import { UserFacade } from '../facades/userFacade';
 import GameFacade from '../facades/gameFacade';
 
 const gju = require('geojson-utils');

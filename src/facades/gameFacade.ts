@@ -1,7 +1,7 @@
 import IPoint from '../interfaces/Point';
 import * as mongo from 'mongodb';
 import { ApiError } from '../errors/apiError';
-import UserFacade from './userFacadeWithDB';
+import { UserFacade } from './userFacade';
 import IPosition from '../interfaces/Position';
 import IPost from '../interfaces/Post';
 import { positionCreator } from '../utils/geoUtils';
@@ -27,9 +27,6 @@ export default class GameFacade {
     if (!dbName) {
       throw new Error('Database name not provided');
     }
-
-    //Setup the Facade
-    await UserFacade.initDB(client);
 
     try {
       positionCollection = await client.db(dbName).collection(POSITION_COLLECTION_NAME);
@@ -63,7 +60,7 @@ export default class GameFacade {
     try {
       //Step-1. Find the user, and if found continue
       // Use relevant methods in the user facade
-      await UserFacade.checkUser(userName, password);
+      await UserFacade.authorizeUser(userName, password);
     } catch (err) {
       throw new ApiError('Wrong username or password', 403);
     }

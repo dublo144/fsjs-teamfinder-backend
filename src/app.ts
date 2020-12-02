@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import mongoose from 'mongoose';
 import { ApiError } from './errors/apiError';
 import { userAPIRouter, gameAPIRouter, geoApiRouter } from './routes';
 
@@ -29,8 +30,15 @@ app.use(function (err: any, req: any, res: any, next: Function) {
   next(err);
 });
 
-const PORT = process.env.PORT || 3333;
-const server = app.listen(PORT);
+const port = process.env.PORT || 3333;
 
-console.log(`Server started, listening on port: ${PORT}`);
-module.exports.server = server;
+mongoose
+  .connect(
+    `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0-wabpp.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`
+  )
+  .then(() =>
+    app.listen({ port }, () => {
+      console.log(`🚀 Server ready at http://localhost:${port}`);
+    })
+  )
+  .catch((e) => console.log(e));

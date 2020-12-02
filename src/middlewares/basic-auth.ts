@@ -1,12 +1,12 @@
 const auth = require('basic-auth');
 import { Response } from 'express';
-import UserFacade from '../facades/userFacadeWithDB';
+import { UserFacade } from '../facades/userFacade';
 
 // Create server
 const authMiddleware = async function (req: any, res: Response, next: Function) {
   const credentials = auth(req);
   try {
-    if (credentials && (await UserFacade.checkUser(credentials.name, credentials.pass))) {
+    if (credentials && (await UserFacade.authorizeUser(credentials.name, credentials.pass))) {
       const user = await UserFacade.getUser(credentials.name);
       req.userName = user.userName;
       req.role = user.role;
