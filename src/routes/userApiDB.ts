@@ -93,8 +93,8 @@ router.delete('/:userName', async function (req: any, res, next) {
       }
     }
     const user_name = req.params.userName;
-    const status = await UserFacade.deleteUser(user_name);
-    res.json({ status });
+    const deletedUser = await UserFacade.deleteUser(user_name);
+    res.json(deletedUser);
   } catch (err) {
     next(err);
   }

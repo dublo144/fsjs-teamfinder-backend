@@ -11,7 +11,7 @@ chai.use(chaiAsPromised);
 
 const DISTANCE_TO_SEARCH = 100;
 
-describe.only('########## Verify the Game Facade ##########', () => {
+describe('########## Verify the Game Facade ##########', () => {
   before(async function () {
     mongoose
       .connect(

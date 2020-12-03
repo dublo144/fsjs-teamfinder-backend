@@ -40,7 +40,6 @@ const authorizeUser = async (userName: string, password: string): Promise<IGameU
       password: ''
     };
   } catch (error) {
-    console.log(error); // TODO - Remove before prod
     throw new Error('Invalid Credentials');
   }
 };

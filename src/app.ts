@@ -34,7 +34,8 @@ const port = process.env.PORT || 3333;
 
 mongoose
   .connect(
-    `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0-wabpp.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`
+    `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0-wabpp.mongodb.net/${process.env.MONGO_DB}?retryWrites=true&w=majority`,
+    { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false }
   )
   .then(() =>
     app.listen({ port }, () => {
@@ -42,3 +43,5 @@ mongoose
     })
   )
   .catch((e) => console.log(e));
+
+export const server = app;

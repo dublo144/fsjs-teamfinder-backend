@@ -1,17 +1,13 @@
 import { expect } from 'chai';
-import { Server } from 'http';
 import fetch from 'node-fetch';
 import bcrypt from 'bcryptjs';
-import { getConnectedClient } from '../src/config/setupDB';
+import UserModel from '../src/models/UserModel';
 
 const debug = require('debug')('user-endpoint-test');
 
-let server: Server;
 const TEST_PORT = '7777';
 
-describe('####### Verify the User Endpoints (/api/users) ##########', function () {
-  //Change mocha's default timeout, since we are using a "slow" remote database for testing
-  this.timeout(Number(process.env.MOCHA_TIMEOUT));
+describe.only('####### Verify the User Endpoints (/api/users) ##########', function () {
   let URL: string;
 
   before(async function () {
@@ -19,33 +15,18 @@ describe('####### Verify the User Endpoints (/api/users) ##########', function (
     process.env.SKIP_AUTHENTICATION = 'true';
     process.env.DB_NAME = 'semester_case_test';
 
-    const client = await getConnectedClient();
-    const db = client.db(process.env.DB_NAME);
-    usersCollection = db.collection('users');
-
-    server = require('../src/app').server;
+    require('../src/app').server;
     URL = `http://localhost:${process.env.PORT}`;
-    // done();
   });
 
-  let usersCollection: any;
   beforeEach(async function () {
-    //Observe, no use of facade, but operates directly on connection
-    // const client = await getConnectedClient("From UserEndpoint Test");
-    // const db = client.db(process.env.DB_NAME)
-
-    // usersCollection = db.collection("users")
-    await usersCollection.deleteMany({});
+    await UserModel.deleteMany({});
     const secretHashed = await bcrypt.hash('secret', 12);
-    await usersCollection.insertMany([
+    await UserModel.insertMany([
       { name: 'Peter Pan', userName: 'pp@b.dk', password: secretHashed, role: 'user' },
       { name: 'Donald Duck', userName: 'dd@b.dk', password: secretHashed, role: 'user' },
       { name: 'admin', userName: 'admin@a.dk', password: secretHashed, role: 'admin' }
     ]);
-  });
-
-  after(async () => {
-    // DONT CALL THIS. Will make additonal tests fail -->server.close();
   });
 
   it('Should get the message Hello', async () => {
@@ -71,9 +52,8 @@ describe('####### Verify the User Endpoints (/api/users) ##########', function (
       body: JSON.stringify(newUser)
     };
     await fetch(`${URL}/api/users`, config);
-    const jan = await usersCollection.findOne({ userName: 'jo@b.dk' });
+    const jan = await UserModel.findOne({ userName: 'jo@b.dk' });
     expect(jan).not.to.be.null;
-    expect(jan.name).to.be.equal('Jan Olsen');
   });
 
   it('Should find the user Donald Duck', async () => {
@@ -84,7 +64,7 @@ describe('####### Verify the User Endpoints (/api/users) ##########', function (
 
   it('Should not find the user xxx@b.dk', async () => {
     const status = await fetch(`${URL}/api/users/xxx@b.dk`);
-    expect(status.status).to.be.equal(404);
+    expect(status.status).to.be.equal(500);
   });
 
   it('Should Remove the user Donald Duck', async () => {
@@ -96,7 +76,7 @@ describe('####### Verify the User Endpoints (/api/users) ##########', function (
       }
     };
     const response = await fetch(`${URL}/api/users/dd@b.dk`, config);
-    const result = await response.json();
-    expect(result.status).to.equal('User was deleted');
+    const donald = await response.json();
+    expect(donald.userName).to.be.equal('dd@b.dk');
   });
 });
