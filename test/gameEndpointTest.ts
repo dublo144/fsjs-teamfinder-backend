@@ -15,7 +15,7 @@ const expect = chai.expect;
 const TEST_PORT = '7777';
 const DISTANCE_TO_SEARCH = 100;
 
-describe('Verify /gameapi/getPostIfReached', () => {
+describe.only('Verify /gameapi/getPostIfReached', () => {
   let URL: string;
 
   before(async function () {

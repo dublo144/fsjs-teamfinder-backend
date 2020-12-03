@@ -1,8 +1,6 @@
 import express from 'express';
+import IPoint from '../interfaces/Point.js';
 import { gameArea, players } from '../utils/gameData.js';
-import { getConnectedClient } from '../config/setupDB';
-import { UserFacade } from '../facades/userFacade';
-import { GameFacade } from '../facades/gameFacade';
 
 const gju = require('geojson-utils');
 
@@ -33,8 +31,8 @@ router.get('/isuserinarea/:lon/:lat', (req, res) => {
 
 router.get('/findNearbyPlayers/:lon/:lat/:rad', (req, res) => {
   const { lon, lat, rad } = req.params;
-  const point = { type: 'Point', coordinates: [lon, lat] };
-  let isInside = gju.pointInPolygon(point, gameArea);
+  const point: IPoint = { type: 'Point', coordinates: [Number(lon), Number(lat)] };
+  let isInside: boolean = gju.pointInPolygon(point, gameArea);
   let result: any[] = [];
   players.forEach((player) => {
     if (gju.geometryWithinRadius(player.geometry, point, rad)) {
