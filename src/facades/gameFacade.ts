@@ -1,28 +1,34 @@
 import IPoint from '../interfaces/Point';
 import { UserFacade } from './userFacade';
 import PositionModel, { IPosition } from '../models/PositionModel';
+import GameAreaModel, { IGameArea } from '../models/GameAreaModel';
+import { IGameUser } from '../models/UserModel';
 
 const debug = require('debug')('game-facade');
 
-const nearbyPlayers = async (
-  userName: string,
-  password: string,
-  longitude: number,
-  latitude: number,
-  distance: number
-) => {
-  await UserFacade.authorizeUser(userName, password);
+const nearbyPlayers = async (user: IGameUser, longitude: number, latitude: number, distance: number) => {
+  const userLocation: IPoint = await updateUserLocation(user.userName, longitude, latitude);
 
-  const point = { type: 'Point', coordinates: [longitude, latitude] };
-  const now = new Date();
+  const userGameAreas: Array<IGameArea> = await getUserGameAreas(
+    userLocation.coordinates[0],
+    userLocation.coordinates[1]
+  );
 
-  const filter = { userName };
-  const update = { lastUpdated: now };
-  const opts = { upsert: true, new: true };
+  if (!userGameAreas.length) {
+    throw new Error('User is not inside a game area');
+  }
 
-  await PositionModel.findOneAndUpdate(filter, update, opts);
-
-  const nearbyPlayers = await findNearbyPlayers(userName, point, distance);
+  const nearbyPlayers = await PositionModel.find({
+    location: {
+      $near: {
+        $geometry: userLocation,
+        $maxDistance: distance
+      }
+    },
+    userName: {
+      $ne: user.userName
+    }
+  });
 
   return nearbyPlayers.map((player) => ({
     userName: player.userName,
@@ -31,28 +37,74 @@ const nearbyPlayers = async (
   }));
 };
 
-const findNearbyPlayers = async (
-  clientUserName: string,
-  point: IPoint,
-  distance: number
-): Promise<Array<IPosition>> => {
-  const found = await PositionModel.find({
+const getUserGameAreas = async (longitude: number, latitude: number) => {
+  const currentLocation: IPoint = { type: 'Point', coordinates: [longitude, latitude] };
+  const gameAreas: Array<IGameArea> = await GameAreaModel.find({
     location: {
-      $near: {
-        $geometry: point,
-        $maxDistance: distance
+      $geoIntersects: {
+        $geometry: currentLocation
       }
-    },
-    userName: {
-      $ne: clientUserName
     }
   });
-  return found;
+  return gameAreas;
+};
+
+const getAllGameAreasWithinRadius = async (
+  longitude: number,
+  latitude: number,
+  radius: number
+): Promise<Array<IGameArea>> => {
+  const currentLocation: IPoint = { type: 'Point', coordinates: [longitude, latitude] };
+  const gameAreas: Array<IGameArea> = await GameAreaModel.find({
+    location: {
+      $near: {
+        $geometry: currentLocation,
+        $maxDistance: radius
+      }
+    }
+  });
+  return gameAreas;
+};
+
+const createGameArea = async () => {
+  await GameAreaModel.remove({});
+  await GameAreaModel.create({
+    name: 'Frb. Have',
+    location: {
+      type: 'Polygon',
+      coordinates: [
+        [
+          [12.517247200012207, 55.66963463190095],
+          [12.52366304397583, 55.666560768293195],
+          [12.530035972595215, 55.66781938730943],
+          [12.531001567840576, 55.670881051090035],
+          [12.518212795257568, 55.67194592146954],
+          [12.517247200012207, 55.66963463190095]
+        ]
+      ]
+    }
+  });
+};
+
+const updateUserLocation = async (userName: string, longitude: number, latitude: number): Promise<IPoint> => {
+  const point: IPoint = { type: 'Point', coordinates: [longitude, latitude] };
+  const now: Date = new Date();
+
+  const filter = { userName };
+  const update = { lastUpdated: now };
+  const opts = { upsert: true, new: true };
+
+  await PositionModel.findOneAndUpdate(filter, update, opts);
+
+  return point;
 };
 
 export const GameFacade = {
-  findNearbyPlayers,
-  nearbyPlayers
+  updateUserLocation,
+  nearbyPlayers,
+  getAllGameAreasWithinRadius,
+  getUserGameAreas,
+  createGameArea
 };
 
 // async function getPostIfReached(postId: string, lat: number, lon: number): Promise<any> {

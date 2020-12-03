@@ -25,7 +25,7 @@ describe('########## User Facade Test ##########', () => {
   });
 
   beforeEach(async () => {
-    await UserModel.deleteMany({});
+    await UserModel.remove({});
     const secretHashed = await bcrypt.hash('secret', 12);
 
     const testUsers: Array<IGameUser> = [

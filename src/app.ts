@@ -3,8 +3,11 @@ import path from 'path';
 import mongoose from 'mongoose';
 import { ApiError } from './errors/apiError';
 import { userAPIRouter, gameAPIRouter, geoApiRouter } from './routes';
+import authenticateToken from './middlewares/authMiddleware';
 
 const app = express();
+
+app.use(authenticateToken);
 
 app.use(express.static(path.join(process.cwd(), 'public')));
 

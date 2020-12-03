@@ -28,12 +28,6 @@ router.post('/', async function (req, res, next) {
 
 router.get('/:userName', async function (req: any, res, next) {
   try {
-    if (USE_AUTHENTICATION) {
-      const role = req.role;
-      if (role != 'admin') {
-        throw new ApiError('Not Authorized', 403);
-      }
-    }
     const user_Name = req.params.userName;
     const user = await UserFacade.getUser(user_Name);
     if (user == null) {
@@ -47,23 +41,17 @@ router.get('/:userName', async function (req: any, res, next) {
   }
 });
 
-if (USE_AUTHENTICATION) {
-  router.use(authMiddleware);
-}
-
-if (USE_AUTHENTICATION) {
-  router.get('/user/me', async function (req: any, res, next) {
-    try {
-      const user_Name = req.userName;
-      const user = await UserFacade.getUser(user_Name);
-      const { name, userName } = user;
-      const userDTO = { name, userName };
-      res.json(userDTO);
-    } catch (err) {
-      next(err);
-    }
-  });
-}
+router.get('/user/me', async function (req: any, res, next) {
+  try {
+    const user_Name = req.userName;
+    const user = await UserFacade.getUser(user_Name);
+    const { name, userName } = user;
+    const userDTO = { name, userName };
+    res.json(userDTO);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/', async function (req: any, res, next) {
   try {

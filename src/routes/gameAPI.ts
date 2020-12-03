@@ -1,17 +1,26 @@
 import express from 'express';
+import { ApiError } from '../errors/apiError';
 import { GameFacade } from '../facades/gameFacade';
+import { IGameUser } from '../models/UserModel';
 
 export const router = express.Router();
 
-//Just to check this router is up and running
-router.get('/', async function (req, res, next) {
-  res.json({ msg: 'game API' });
+router.get('/createGameArea', async (req, res, next) => {
+  await GameFacade.createGameArea();
+  return res.json('success!');
 });
 
-router.post('/nearbyplayers', async function (req, res, next) {
+router.post('/nearbyplayers', async function (req: any, res, next) {
   try {
-    const { userName, password, lat, lon, distance } = req.body;
-    const response = await GameFacade.nearbyPlayers(userName, password, Number(lon), Number(lat), Number(distance));
+    const user: IGameUser = req.user;
+    if (!user) throw new ApiError('Invalid Credentials', 403);
+    const { newPosition } = req.body;
+    const response = await GameFacade.nearbyPlayers(
+      user,
+      Number(newPosition.lon),
+      Number(newPosition.lat),
+      Number(newPosition.distance)
+    );
     return res.json(response);
   } catch (err) {
     next(err);

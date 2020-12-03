@@ -5,9 +5,11 @@ export interface IGameUser {
   userName: string;
   password: string;
   role: string;
+  token?: string;
+  tokenExpiration?: number;
 }
 
-interface IGameUserDoc extends IGameUser, Document {}
+export interface IGameUserDoc extends IGameUser, Document {}
 
 const userSchema: Schema = new Schema({
   name: {
