@@ -1,91 +1,126 @@
-import * as mongo from 'mongodb';
-const MongoClient = mongo.MongoClient;
-import GameFacade from '../src/facades/gameFacade';
+import { GameFacade } from '../src/facades/gameFacade';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import bcrypt from 'bcryptjs';
 import { positionCreator, getLatitudeOutside, getLatitudeInside } from '../src/utils/geoUtils';
-import { USER_COLLECTION_NAME, POSITION_COLLECTION_NAME, POST_COLLECTION_NAME } from '../src/config/collectionNames';
-import { getConnectedClient, closeConnection } from '../src/config/setupDB';
-import { ApiError } from '../src/errors/apiError';
+import mongoose from 'mongoose';
+import UserModel, { IGameUser } from '../src/models/UserModel';
+import PositionModel, { IPosition } from '../src/models/PositionModel';
+import { UserFacade } from '../src/facades/userFacade';
+import GameAreaModel from '../src/models/GameAreaModel';
+
 chai.use(chaiAsPromised);
 
-let userCollection: mongo.Collection | null;
-let positionCollection: mongo.Collection | null;
-let postCollection: mongo.Collection | null;
-
-let client: mongo.MongoClient;
 const DISTANCE_TO_SEARCH = 100;
+let team1: IGameUser, team2: IGameUser, team3: IGameUser;
 
 describe('########## Verify the Game Facade ##########', () => {
   before(async function () {
-    this.timeout(Number(process.env.MOCHA_TIMEOUT));
-    client = await getConnectedClient();
-    process.env.DB_NAME = 'semester_case_test';
-    await GameFacade.initDB(client);
-
-    const db = client.db(process.env['DB_NAME']);
-
-    userCollection = db.collection(USER_COLLECTION_NAME);
-    positionCollection = db.collection(POSITION_COLLECTION_NAME);
-    postCollection = db.collection(POST_COLLECTION_NAME);
-
-    if (userCollection === null || positionCollection === null) {
-      throw new Error('user and/or location- collection not initialized');
-    }
+    mongoose
+      .connect(
+        `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PW}@cluster0-wabpp.mongodb.net/${process.env.MONGO_DB_TEST}?retryWrites=true&w=majority`,
+        { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false }
+      )
+      .then(() => {
+        console.log(`🚀 Connected to ${process.env.MONGO_DB_TEST} 🚀`);
+      })
+      .catch((e) => console.log(e));
   });
 
   beforeEach(async () => {
-    if (userCollection === null || positionCollection === null || postCollection === null) {
-      throw new Error('One of requred collections is null');
-    }
-    await userCollection.deleteMany({});
-    const secretHashed = await bcrypt.hash('secret', 12);
-    const team1 = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
-    const team2 = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
-    const team3 = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
-    await userCollection.insertMany([team1, team2, team3]);
+    await UserModel.remove({});
+    const secretHashed: string = await bcrypt.hash('secret', 12);
 
-    await positionCollection.deleteMany({});
+    team1 = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
+    team2 = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
+    team3 = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
+    await UserModel.insertMany([team1, team2, team3]);
 
-    const positions = [
-      positionCreator(12.48, 55.77, team1.userName, team1.name, true),
-      //TODO --> Change latitude below, to a value INSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
-      positionCreator(12.48, getLatitudeInside(55.77, DISTANCE_TO_SEARCH), team2.userName, team2.name, true),
-      //TODO --> Change latitude below, to a value OUTSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
-      positionCreator(12.48, getLatitudeOutside(55.77, DISTANCE_TO_SEARCH), team3.userName, team3.name, true)
+    await PositionModel.remove({});
+    const positions: Array<IPosition> = [
+      positionCreator(12.52415657043457, 55.66892064574196, team1.userName, team1.name, true),
+      positionCreator(
+        12.52415657043457,
+        getLatitudeInside(55.66892064574196, DISTANCE_TO_SEARCH),
+        team2.userName,
+        team2.name,
+        true
+      ),
+      positionCreator(
+        12.52415657043457,
+        getLatitudeOutside(55.66892064574196, DISTANCE_TO_SEARCH),
+        team3.userName,
+        team3.name,
+        true
+      )
     ];
-    await positionCollection.insertMany(positions);
+    await PositionModel.insertMany(positions);
 
-    //Only include this if you plan to do this part
-    /*await postCollection.deleteMany({})
-    await postCollection.insertOne({
-      _id: "Post1",
-      task: { text: "1+1", isUrl: false },
-      taskSolution: "2",
+    await GameAreaModel.remove({});
+    await GameAreaModel.create({
+      name: 'Vester Kirkegård',
       location: {
-        type: "Point",
-        coordinates: [12.49, 55.77]
+        type: 'Polygon',
+        coordinates: [
+          [
+            [12.526388168334961, 55.656308777140374],
+            [12.527761459350586, 55.65202320591278],
+            [12.535486221313477, 55.65408130713866],
+            [12.533597946166992, 55.65737404408103],
+            [12.526388168334961, 55.656308777140374]
+          ]
+        ]
       }
-    });*/
+    });
+    await GameAreaModel.create({
+      name: 'Frb. Have',
+      location: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [12.517247200012207, 55.66963463190095],
+            [12.52366304397583, 55.666560768293195],
+            [12.530035972595215, 55.66781938730943],
+            [12.531001567840576, 55.670881051090035],
+            [12.518212795257568, 55.67194592146954],
+            [12.517247200012207, 55.66963463190095]
+          ]
+        ]
+      }
+    });
   });
 
   describe('Verify nearbyPlayers', () => {
     it('Should find (Only) Team2', async () => {
-      const playersFound = await GameFacade.nearbyPlayers('t1', 'secret', 12.48, 55.77, DISTANCE_TO_SEARCH);
+      const playersFound = await GameFacade.nearbyPlayers(
+        team1,
+        12.52415657043457,
+        55.66892064574196,
+        DISTANCE_TO_SEARCH
+      );
       expect(playersFound.length).to.be.equal(1);
       expect(playersFound[0].userName).to.be.equal('t2');
     });
 
-    it('Should not find Team2 (wrong credentials)', async () => {
-      await expect(GameFacade.nearbyPlayers('t1', 'xxxxx', 12.48, 55.77, DISTANCE_TO_SEARCH)).to.be.rejectedWith(
-        ApiError
-      );
+    it('Should find Frb. Have game area for user', async () => {
+      await GameFacade.updateUserLocation(team1.userName, 12.526988983154297, 55.66640343806983);
+      const gameAreas = await GameFacade.getAllGameAreasWithinRadius(12.526988983154297, 55.66640343806983, 500);
+      expect(gameAreas.length).to.be.equal(1);
+      expect(gameAreas[0].name).to.be.equal('Frb. Have');
     });
 
-    it('Should find Team2 and Team3', async () => {
-      const playersFound = await GameFacade.nearbyPlayers('t1', 'secret', 12.48, 55.77, DISTANCE_TO_SEARCH + 200);
-      expect(playersFound.length).to.be.equal(2);
+    it('Should find Frb. Have and Vester kirkegård for user', async () => {
+      await GameFacade.updateUserLocation(team1.userName, 12.526988983154297, 55.66640343806983);
+      const gameAreas = await GameFacade.getAllGameAreasWithinRadius(12.526988983154297, 55.66640343806983, 2000);
+      expect(gameAreas.length).to.be.equal(2);
+      expect(gameAreas[0].name).to.be.equal('Frb. Have');
+      expect(gameAreas[1].name).to.be.equal('Vester Kirkegård');
+    });
+
+    it('Should throw error if user is outside a game area', async () => {
+      await expect(GameFacade.nearbyPlayers(team1, 66, 60, DISTANCE_TO_SEARCH)).to.be.rejectedWith(
+        'User is not inside a game area'
+      );
     });
   });
 

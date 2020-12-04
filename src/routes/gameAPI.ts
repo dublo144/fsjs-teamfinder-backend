@@ -1,36 +1,26 @@
 import express from 'express';
-import { getConnectedClient } from '../config/setupDB';
-import UserFacade from '../facades/userFacadeWithDB';
-import GameFacade from '../facades/gameFacade';
+import { ApiError } from '../errors/apiError';
+import { GameFacade } from '../facades/gameFacade';
+import { IGameUser } from '../models/UserModel';
 
 export const router = express.Router();
-let dbInitialized = false;
 
-(async function initDb() {
-  const client = await getConnectedClient();
-  await UserFacade.initDB(client);
-  await GameFacade.initDB(client);
-  dbInitialized = true;
-})();
-
-router.use((req, res, next) => {
-  if (dbInitialized) {
-    return next();
-  }
-  return res.json({ info: 'DB not ready, try again' });
+router.get('/createGameArea', async (req, res, next) => {
+  await GameFacade.createGameArea();
+  return res.json('success!');
 });
 
-//Just to check this router is up and running
-router.get('/', async function (req, res, next) {
-  res.json({ msg: 'game API' });
-});
-
-router.post('/nearbyplayers', async function (req, res, next) {
+router.post('/nearbyplayers', async function (req: any, res, next) {
   try {
-    const { userName, password, lat, lon, distance } = req.body;
-    //Read the exercise and check what must be sent with the request. Grab this information from the request body, and
-    //call the method (the skeleton is already there) nearbyPlayers(....) in the gameFacade and send back the result to the client
-    const response = await GameFacade.nearbyPlayers(userName, password, Number(lon), Number(lat), Number(distance));
+    const user: IGameUser = req.user;
+    if (!user) throw new ApiError('Invalid Credentials', 403);
+    const { newPosition } = req.body;
+    const response = await GameFacade.nearbyPlayers(
+      user,
+      Number(newPosition.lon),
+      Number(newPosition.lat),
+      Number(newPosition.distance)
+    );
     return res.json(response);
   } catch (err) {
     next(err);

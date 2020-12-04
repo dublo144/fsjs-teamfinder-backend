@@ -1,90 +1,125 @@
 import chai from 'chai';
 import spies from 'chai-spies';
-import { Server } from 'http';
 import fetch from 'node-fetch';
-import { MongoClient } from 'mongodb';
 import bcrypt from 'bcryptjs';
-import { getConnectedClient } from '../src/config/setupDB';
-
 import { positionCreator, getLatitudeInside, getLatitudeOutside } from '../src/utils/geoUtils';
-import { USER_COLLECTION_NAME, POSITION_COLLECTION_NAME } from '../src/config/collectionNames';
-import GameFacade from '../src/facades/gameFacade';
+import { GameFacade } from '../src/facades/gameFacade';
+import UserModel, { IGameUser } from '../src/models/UserModel';
+import PositionModel from '../src/models/PositionModel';
+import GameAreaModel from '../src/models/GameAreaModel';
+import { UserFacade } from '../src/facades/userFacade';
 
+const gju = require('geojson-utils');
 chai.use(spies);
 
 const expect = chai.expect;
 
-let server: Server;
 const TEST_PORT = '7777';
-let client: MongoClient;
 const DISTANCE_TO_SEARCH = 100;
+
+let team1: IGameUser, team2: IGameUser, team3: IGameUser;
 
 describe('Verify /gameapi/getPostIfReached', () => {
   let URL: string;
-  let usersCollection: any;
-  let positionsCollection: any;
 
-  //IMPORTANT --> this does now work with Mocha for ARROW-functions
   before(async function () {
-    //@ts-ignore
-    this.timeout(Number(process.env.MOCHA_TIMEOUT));
-
     process.env.PORT = TEST_PORT;
-    process.env.SKIP_AUTHENTICATION = 'true';
-    process.env.DB_NAME = 'semester_case_test';
+    process.env.SKIP_AUTHENTICATION = 'false';
+    process.env.MONGO_DB = 'semester_case_test';
 
-    const client = await getConnectedClient();
-    const db = client.db(process.env.DB_NAME);
-    usersCollection = db.collection(USER_COLLECTION_NAME);
-    positionsCollection = db.collection(POSITION_COLLECTION_NAME);
-
-    server = require('../src/app').server;
+    require('../src/app').server;
     URL = `http://localhost:${process.env.PORT}`;
   });
 
   beforeEach(async () => {
-    await usersCollection.deleteMany({});
+    await UserModel.remove({});
     const secretHashed = await bcrypt.hash('secret', 12);
-    const team1 = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
-    const team2 = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
-    const team3 = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
+    team1 = { name: 'Team1', userName: 't1', password: secretHashed, role: 'team' };
+    team2 = { name: 'Team2', userName: 't2', password: secretHashed, role: 'team' };
+    team3 = { name: 'Team3', userName: 't3', password: secretHashed, role: 'team' };
+    await UserModel.insertMany([team1, team2, team3]);
 
-    await usersCollection.insertMany([team1, team2, team3]);
+    await GameAreaModel.remove({});
+    await GameAreaModel.create({
+      name: 'Vester Kirkegård',
+      location: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [12.526388168334961, 55.656308777140374],
+            [12.527761459350586, 55.65202320591278],
+            [12.535486221313477, 55.65408130713866],
+            [12.533597946166992, 55.65737404408103],
+            [12.526388168334961, 55.656308777140374]
+          ]
+        ]
+      }
+    });
+    await GameAreaModel.create({
+      name: 'Frb. Have',
+      location: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [12.517247200012207, 55.66963463190095],
+            [12.52366304397583, 55.666560768293195],
+            [12.530035972595215, 55.66781938730943],
+            [12.531001567840576, 55.670881051090035],
+            [12.518212795257568, 55.67194592146954],
+            [12.517247200012207, 55.66963463190095]
+          ]
+        ]
+      }
+    });
 
-    await positionsCollection.deleteMany({});
-    await positionsCollection.createIndex({ lastUpdated: 1 }, { expireAfterSeconds: 30 });
-    await positionsCollection.createIndex({ location: '2dsphere' });
+    await PositionModel.remove({});
     const positions = [
-      positionCreator(12.48, 55.77, team1.userName, team1.name, true),
-      //TODO --> Change latitude below, to a value INSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
-      positionCreator(12.48, getLatitudeInside(55.77, DISTANCE_TO_SEARCH), team2.userName, team2.name, true),
-      //TODO --> Change latitude below, to a value OUTSIDE the radius given by DISTANCE_TO_SEARC, and the position of team1
-      positionCreator(12.48, getLatitudeOutside(55.77, DISTANCE_TO_SEARCH), team3.userName, team3.name, true)
+      positionCreator(12.5203800201416, 55.66998556947477, team1.userName, team1.name, true),
+      positionCreator(
+        12.528619766235352,
+        getLatitudeInside(55.66998556947477, DISTANCE_TO_SEARCH),
+        team2.userName,
+        team2.name,
+        true
+      ),
+      positionCreator(
+        12.528619766235352,
+        getLatitudeOutside(55.66998556947477, DISTANCE_TO_SEARCH),
+        team3.userName,
+        team3.name,
+        true
+      )
     ];
-    await positionsCollection.insertMany(positions);
+    await PositionModel.insertMany(positions);
   });
 
-  after(async () => {});
-
   it('Should find team2, since inside range', async function () {
-    const newPosition = { userName: 't1', password: 'secret', lat: 55.77, lon: 12.48, distance: DISTANCE_TO_SEARCH };
+    // signs in
+    const { token } = await UserFacade.authorizeUser('t1', 'secret');
+
+    const body = {
+      newPosition: { lat: 55.66998556947477, lon: 12.528619766235352, distance: DISTANCE_TO_SEARCH },
+      token
+    };
+
     const config = {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify(newPosition)
+      body: JSON.stringify(body)
     };
+
     const result = await fetch(`${URL}/gameapi/nearbyplayers`, config);
     const json = await result.json();
     expect(json.length).to.be.equal(1);
     expect(json[0].userName).to.be.equal('t2');
   });
 
-  it('Should return 403 when invalid credentials', async () => {
-    const newPosition = { userName: 'hulabula', password: 123, lat: 55.77, lon: 12.48, distance: DISTANCE_TO_SEARCH };
-
+  it('Should return 403 when no token is send', async () => {
+    const newPosition = { lat: 55.77, lon: 12.48, distance: DISTANCE_TO_SEARCH };
     const config = {
       method: 'POST',
       headers: {
@@ -99,20 +134,48 @@ describe('Verify /gameapi/getPostIfReached', () => {
     expect(json.code === 403);
   });
 
-  it('Should call the NearbyPlayers-method with the correct username and PW', async function () {
-    const newPosition = { userName: 't1', password: 'secret', lat: 55.77, lon: 12.48, distance: DISTANCE_TO_SEARCH };
+  it('Should call the NearbyPlayers-method', async function () {
+    const { token } = await UserFacade.authorizeUser('t1', 'secret');
+
+    const body = {
+      newPosition: { lat: 55.66998556947477, lon: 12.528619766235352, distance: DISTANCE_TO_SEARCH },
+      token
+    };
 
     const config = {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
       },
-      body: JSON.stringify(newPosition)
+      body: JSON.stringify(body)
     };
 
     const spy = chai.spy.on(GameFacade, 'nearbyPlayers');
     await fetch(`${URL}/gameapi/nearbyplayers`, config);
-    expect(spy).to.have.been.called().with('t1', 'secret');
+    expect(spy).to.have.been.called();
+  });
+
+  xit('Should throw error if user is outside a GameArea', async () => {
+    const { token } = await UserFacade.authorizeUser('t1', 'secret');
+
+    const body = {
+      newPosition: { lat: 66.66998556947477, lon: 12.528619766235352, distance: DISTANCE_TO_SEARCH },
+      token
+    };
+
+    const config = {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(body)
+    };
+
+    const result = await fetch(`${URL}/gameapi/nearbyplayers`, config);
+    console.log(result);
   });
 });
