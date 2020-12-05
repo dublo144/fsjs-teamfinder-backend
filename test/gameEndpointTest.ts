@@ -98,8 +98,7 @@ describe('Verify /gameapi/getPostIfReached', () => {
     const { token } = await UserFacade.authorizeUser('t1', 'secret');
 
     const body = {
-      newPosition: { lat: 55.66998556947477, lon: 12.528619766235352, distance: DISTANCE_TO_SEARCH },
-      token
+      newPosition: { lat: 55.66998556947477, lon: 12.528619766235352, distance: DISTANCE_TO_SEARCH }
     };
 
     const config = {

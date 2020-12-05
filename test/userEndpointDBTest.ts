@@ -35,6 +35,21 @@ describe('####### Verify the User Endpoints (/api/users) ##########', function (
     expect(result.msg).to.be.equal('Hello');
   });
 
+  it.only('Should sign in', async () => {
+    const body = { userName: 'pp@b.dk', password: 'secret' };
+    const config = {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    };
+    const result = await fetch(`${URL}/api/users/signin`, config);
+    const json = await result.json();
+    expect(json.userName).to.be.equal('pp@b.dk');
+  });
+
   it('Should get three users', async () => {
     const response = await fetch(`${URL}/api/users`);
     const result = await response.json();

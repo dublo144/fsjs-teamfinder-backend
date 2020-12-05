@@ -45,7 +45,7 @@ const authorizeUser = async (userName: string, password: string): Promise<IGameU
       { expiresIn: '24h' } // change to 1h
     );
     return {
-      ...user,
+      ...user._doc,
       password: '',
       token,
       tokenExpiration: 1

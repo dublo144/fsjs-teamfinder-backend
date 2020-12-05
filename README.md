@@ -1,19 +1,12 @@
-## first thing you should do is to create af file `.env` in the root of the project with this content
+## Teamfinder application
 
-CONNECTION=YOUR_CONNECTION_STRING_TO_ATLAS
+---
 
-DB_NAME=semester_case
+**General Notes:**
+As of now I dont have a working application to display. It is still a work in progress, since I kind of went my own ways with the project, and spend most of the time refining the backend.
 
-PORT=5555
+Hopefully, I'll still be eligeble for study points for this period.
 
-DEBUG=game-project,facade-no-db,facade-with-db,facade-with-db:test,user-endpoint,user-endpoint-test,db-setup
+I implemented the following in the backend:
 
-SKIP_AUTHENTICATION=true
-
-MOCHA_TIMEOUT=5000
-
-## HINTS
-
-Remember you can run individual typescript files using ts-node like this:
-
-`ts-node -r dotenv/config ./src/PATH_TO_FILE`
+1. **Mongoose**:

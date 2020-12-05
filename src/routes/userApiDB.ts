@@ -14,6 +14,16 @@ router.get('/', async (req, res, next) => {
   res.json(await UserFacade.getUsers());
 });
 
+router.post('/signIn', async (req, res, next) => {
+  try {
+    const { userName, password } = req.body;
+    const user = await UserFacade.authorizeUser(userName, password);
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/', async function (req, res, next) {
   try {
     let newUser = req.body;

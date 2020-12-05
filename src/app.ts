@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { ApiError } from './errors/apiError';
 import { userAPIRouter, gameAPIRouter, geoApiRouter } from './routes';
 import authenticateToken from './middlewares/authMiddleware';
+import { requestLogger } from './middlewares/logger';
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use(authenticateToken);
 app.use(express.static(path.join(process.cwd(), 'public')));
 
 // Add if needed
-// app.use(requestLogger)
+app.use(requestLogger);
 // app.use(errorLogger)
 
 app.use(express.json());
