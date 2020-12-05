@@ -1,6 +1,6 @@
 ## Teamfinder application
 
-The client repo can be found [here]() (Still work in progress)
+The client repo can be found [here](https://github.com/dublo144/fsjs-teamfinder-client) (Still work in progress)
 
 ---
 
